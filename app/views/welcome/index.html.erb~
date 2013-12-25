@@ -1,0 +1,117 @@
+<html>
+	<head>
+		<title>Лексический  и Синтаксический анализатор языка "МИЛАН"</title>
+	</head>
+	<body>
+	<div>
+		<table border="1" style=" width:1000px;" valign="top">
+
+			<tr>
+				<td valign="top" colspan="4">
+				<h2 align="center">Лексический и Синтаксический анализатор языка "МИЛАН"</h2>
+                                <h2 align="center">Разработчик и проектировщик: Тарасов Павел ИВТ-260</h2>
+				</td>
+			</tr>
+
+			<tr>
+				<td valign="top" colspan="3">
+				<!--это поле для ввода текста программы на языке МИЛАН-->
+				<!-- Форма с исходным кодом -->
+					<%= form_tag(controller: "welcome", action: "index") do %>
+						<%= label_tag(:src, "Введите исходный код здесь:") %>
+						<br />
+						<%= text_area_tag :src, nil, :size => "106x15"  %>
+						<br />
+						<%= submit_tag("Анализировать") %>
+					<% end %>
+				</td>
+				
+				<td valign="top" rowspan="5">
+				<!--это таблица для вывода найденных лексем-->
+					<table style="border: 0px solid black; width:250px;" border="1" valign="top">
+						<tr><td colspan="3"><center><p>Список лексем</p></center></td></tr>
+						<tr><td>Лексема</td><td>Инд.</td><td>Стр.</td></tr>
+						<% for ii in 0..@resultLex.size -%>
+						<tr><td colspan="3"><%= @resultLex[ii] %></td></tr>
+						<%  end %>
+					</table>
+				</td>
+			</tr>
+
+			<tr>
+				<td valign="top" colspan="3">
+				<!--это таблица для вывода найденных ошибок-->
+					<table style="border: 0px solid black; width:762px;" border="1" valign="top">
+						<tr><td colspan="3"><center><p>Лексические ошибки</p></center></td></tr>
+						<tr><td>Ид.</td><td>Описание ошибки</td><td>Стр.</td></tr>
+						<% for ii in 0..@resultLexErr.size -%>
+						<tr><td colspan="3"><%= @resultLexErr[ii] %></td></tr>
+						<%  end %>
+					</table>
+				</td>
+			</tr>
+
+			<tr>
+				<td valign="top" colspan="3">
+				<!--это таблица для вывода найденных ошибок-->
+					<table style="border: 0px solid black; width:762px;" border="1" valign="top">
+						<tr><td><center><p>Синтаксические ошибки</p></center></td></tr>
+						<% for ii in 0..@resultSintaxErr.size -%>
+						<tr><td><%= @resultSintaxErr[ii] %></td></tr>
+						<%  end %>
+					</table>
+				</td>
+			</tr>
+
+			
+			<!--Три таблицы в ряд 'идентификаторы', 'числ. константы', 'стр. константы'-->
+			<tr>
+				<td valign="top">
+				<!--это таблица для вывода найденных идентификаторов-->
+					<table style="border: 0px solid black; width:250px;" border="1" valign="top">
+						<tr><td colspan="3"><center><p>Идентификаторы</p></center></td></tr>
+						<tr><td>Ид.</td><td>Инд.</td><td>Стр.</td></tr>
+						<% for ii in 0..@resultVar.size -%>
+						<tr><td colspan="3"><%= @resultVar[ii] %></td></tr>
+						<%  end %>
+					</table>
+				</td>
+
+				<td valign="top">
+				<!--это таблица для вывода найденных чисел-->
+					<table style="border: 0px solid black; width:250px;" border="1" valign="top">
+						<tr><td colspan="3"><center><p>Целочисленные константы</p></center></td></tr>
+						<tr><td>Цел.Конст.</td><td>Инд.</td><td>Стр.</td></tr>
+						<% for ii in 0..@resultNum.size -%>
+						<tr><td colspan="3"><%= @resultNum[ii] %></td></tr>
+						<%  end %>
+					</table>
+				</td>
+
+				<td valign="top">
+				<!--это таблица для вывода найденных строк-->
+					<table style="border: 0px solid black; width:250px;" border="1" valign="top">
+						<tr><td colspan="3"><center><p>Строковые константы</p></center></td></tr>
+						<tr><td>Стр.Конст.</td><td>Инд.</td><td>Стр.</td></tr>
+						<% for ii in 0..@resultStr.size -%>
+						<tr><td colspan="3"><%= @resultStr[ii] %></td></tr>
+						<%  end %>
+					</table>
+				</td>
+			</tr>
+			
+			<tr>
+				<td valign="top" colspan="3">
+				<!--это таблица для вывода синтаксиса-->
+					<table id="marks" style="border: 0px solid black; width:762px;" border="1" valign="top">
+						<tr><td><center><p>Синтаксическое дерево</p></center></td></tr>
+						<% for ii in 0..@resultRules.size -%>
+						<tr><td><%= @resultRules[ii] %></td></tr>
+						<%  end %>
+					</table>
+				</td>
+			</tr>
+		</table>
+		</div>
+	</body>
+</html>

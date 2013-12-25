@@ -1,0 +1,851 @@
+
+  ### Синтаксический анализ
+
+#  синтаксический анализ
+def sinAn()
+
+	if(Program()==0 && @currentLex>=@tabLex.size)# если спуск прошел успешно, то вывод сообщения о корректном завершении
+		@stateStr="Правильная строка";
+	else
+		@stateStr="Неправильная строка";
+	end
+	@currentLex=0;
+
+end
+
+#  проверка нетерминала <Программа>
+
+def Program()
+
+	if(@tabLex.size==0)	# если текст пуст,то корректное завершение
+    
+        @tabrules.push("пусто")
+        return 0
+    end
+    @tabrules.push("<программа>-><объявление переменных><тело программы>")
+    if(Declaration()==0)
+	
+        if(ProgramBox()==0)
+            return 0
+        else 
+			return -1
+		end
+    else 
+		return -1
+	end
+end
+
+#  проверка нетерминала <объявление переменных>
+
+def Declaration()
+
+	if(@tabLex[@currentLex][1]==12)# если текущая лексема var
+    
+        @tabrules.push("<объявление переменных>->var<список переменных>")
+        @currentLex+=1# переход к следующей лексеме
+        if(VarList()==0)
+            return 0
+        else 
+			return -1
+		end
+	else
+		@tabErrors.push("Следующая лексема должна быть 'var'")
+		return -1
+	end
+end
+
+#  проверка нетерминала <список переменных>
+
+def VarList()
+
+	@tabrules.push("<список переменных>-><блок переменных>;<другой список переменных>")
+	if(VarBox()==0)
+    
+		if(@tabLex[@currentLex][1]==20)# если лексема ;
+		
+			if(@tabLex[@currentLex][1]==1) # если begin
+				return 0
+			end
+			@currentLex+=1 # переход к следующей
+			if(spisok()==0)
+	
+				return 0
+			 else 
+				return -1
+			end
+		else
+			@tabErrors.push("Следующая лексема должна быть ';'")
+			return -1
+		end
+    end
+	return -1
+end
+
+#  проверка нетерминала <блок переменных>
+
+def VarBox()
+
+	@tabrules.push("<блок переменных>-><список имен>:<тип>")
+	if(NameList()==0)
+    
+		if(@tabLex[@currentLex][1]==21.5)# если лексема :
+		
+			@currentLex+=1# переход
+			if(Type()==0)
+				return 0
+			else
+				return -1
+			end
+		else
+			@tabErrors.push("Следующая лексема должна быть ':'")
+			return -1
+		end
+    else 
+		return -1
+	end
+end
+
+#  проверка нетерминала <другой список переменных>
+
+def spisok()
+
+	if(VarList()==0)
+	
+        @tabrules.push("<другой список переменных>-><список переменных>")
+        return 0
+    else
+ 
+        @tabrules.push("<другой список переменных>->пусто")
+        return 0
+    end
+end
+
+#  проверка нетерминала <список имен>
+
+def NameList()
+
+	if(@tabLex[@currentLex][1]==30) # идентификатор
+    
+        @tabrules.push("<список имен>->ид.<другой список имен>")
+		if(@Declare.include?(@tabLex[@currentLex][0])==true)# если переменная уже была объявлена ранее,то вывод о наличии семантической ошибки
+			@tabErrors.push("Семантическая ошибка: Эта переменная была объявлена ​​ранее")
+		end
+		@Declare.push(@tabLex[@currentLex][0]) # декларируем переменную
+        @currentLex+=1	# переход
+		@countVariable++       # увеличиваем количество переменных,объявленных в одном блоке
+        if(NameSp()==0)
+        
+            return 0
+        else 
+			return -1
+		end
+	else
+		return -1
+	end
+end
+
+#  проверка нетерминала <другой список имен>
+
+def NameSp()
+
+	if(@tabLex[@currentLex][1]==29)# если лексема ','
+    
+        @tabrules.push("<другой список имен>->,<список имен>")
+        @currentLex+=1    # переход
+        if(NameList()==0)
+		
+            return 0
+        else 
+			return -1
+		end
+	else
+		@tabrules.push("<другой список имен>->пусто")# больше нет переменных,которые объявляются в этом блоке
+		return 0
+	end
+end
+#  проверка нетерминала <тип>
+
+def Type()
+
+	if(@tabLex[@currentLex][1]==15) # если лексема integer
+	
+		setTypeI(@countVariable)# записываем в контейнер с переменными типа integer объявленные в этом блоке переменные
+		@tabrules.push("<Тип>->integer")
+		@countVariable=0# обнуляем количество для подготовки к следующему блоку объявления
+		@currentLex+=1
+		return 0
+		
+	elsif(@tabLex[@currentLex][1]==16)# если лексема string
+	
+		setTypeS(@countVariable)# записываем в контейнер с переменными типа string объявленные в этом блоке переменные
+		@tabrules.push("<Тип>->string")
+		@countVariable=0# обнуляем количество для подготовки к следующему блоку объявления
+		@currentLex+=1
+		return 0
+	else
+		@tabErrors.push("Неверный тип")
+		return -1
+	end
+end
+
+
+#  функция записи в контейнер TypeI идентификаторов переменных с типом integer
+# param n - количество переменных,которые нужно записать
+
+def setTypeI( n)
+    i = 0
+	for i in 0..@Declare.size # берем последние n объявленных переменных и записываем их в контейнер
+		if(!@TypeS.include?(@Declare[i]))
+			@TypeI.push(@Declare[i])
+		else							# если переменная уже объявлена другим типом.то вывод ошибки
+			@tabErrors.push("Семантическая ошибка: Эта переменная имеет неправильный тип")
+		end
+	end
+end
+
+#  функция записи в контейнер TypeS идентификаторов переменных с типом string
+# param s - количество переменных,которые нужно записать
+
+def setTypeS( s)
+
+	for  i in 0..@Declare.size # берем последние s объявленных переменных и записываем их в контейнер
+	
+		if(!@TypeI.include?(@Declare[i]))
+			@TypeS.push(@Declare[i])
+		else							# если переменная уже объявлена другим типом.то вывод ошибки
+			@tabErrors.push("Семантическая ошибка: Эта переменная имеет неправильный тип")
+		end
+	end
+end
+
+
+#  проверка нетерминала <тело программы>
+
+def ProgramBox()
+
+	if(@tabLex[@currentLex][1]==1)# если лексема begin
+	
+        @tabrules.push("<тело программы>->begin <последовательность операторов> end.")# добавить в конец строки
+        @currentLex+=1# переход
+        if(OperatorSequence()==0)
+        
+			if(@tabLex[@currentLex][1]==2)# если лексема end
+			
+				@currentLex+=1# переход
+				if(@tabLex[@currentLex][1]==28)# если лексема .
+				
+					@currentLex+=1# переход
+					return 0
+				else
+					@tabErrors.push("Следующая лексема должна быть '.'")
+					return -1
+				end
+			else
+				@tabErrors.push("Следующая лексема должна быть 'end'")
+				return -1
+			end
+        else 
+			return -1
+		end
+	else
+		@tabErrors.push("Следующая лексема должна быть 'begin'")
+		return -1
+	end
+end
+
+#  проверка нетерминала <последовательность операторов>
+
+def OperatorSequence()
+
+	@tabrules.push("<последовательность операторов>-><оператор><другая послед. операторов>")
+    if(Operator()==0)
+    
+        if(Rest1()==0)
+            return 0
+        else 
+			return -1
+		end
+    else 
+		return -1
+	end
+end
+
+#  проверка нетерминала <другая послед. операторов>
+
+def Rest1()
+
+	if(@tabLex[@currentLex][1]==20)# если лексема ;
+    
+	    @currentLex+=1# переход
+		if(OperatorSequence()==0)
+		
+			@tabrules.push("<другая послед. операторов>->;<последовательность операторов>")
+            return 0
+        else 
+			@tabrules.push("<другая послед. операторов>->;")
+			return 0
+		end
+	else  
+		@tabrules.push("<другая послед. операторов>->пусто")
+		return 0
+	end
+end
+
+#  проверка нетерминала <оператор>
+
+def Operator()
+
+	if(@tabLex[@currentLex][1]==30) # если текущая лексема переменная
+	
+		type=CheckItem()# определяем тип переменной
+		@tabrules.push("<оператор>->ид.:=<выражение>")
+		@currentLex+=1# переход
+		if(@tabLex[@currentLex][1]==27)# если лексема :=
+		
+			@currentLex+=1# переход
+			if(Expression()==0)
+			
+				if(type!=@typeExp)# если типы операндов в присваивании не равны, то вывод о семантической ошибке
+					@tabErrors.push("Семантическая ошибка: несоответствие типов")
+				end
+				return 0
+			else
+				return -1
+			end
+		else
+			@tabErrors.push("Следующая лексема должна быть ':='")
+			return -1
+		end
+	
+	elsif(@tabLex[@currentLex][1]==3)# если лексема if
+	
+		@currentLex+=1# переход
+		@tabrules.push("<оператор>->if <условие> then <оператор><иначе, оператор>")
+		if(Condition()==0)
+		
+			if(@tabLex[@currentLex][1]==4)# если лексема then
+			
+				@currentLex+=1# переход
+				if(Operator()==0)
+				
+					if(elseOp()==0)
+						return 0
+					else
+						return -1
+					end
+				else
+					return -1
+				end
+			else
+				@tabErrors.push("Следующая лексема должна быть 'then'")
+				return -1
+			end
+		else
+			return -1
+		end
+	
+	elsif(@tabLex[@currentLex][1]==6)# если лексема while
+	
+		@currentLex+=1# переход
+		@tabrules.push("<оператор>->while <условие> do <оператор>")
+		if(Condition()==0)
+		
+			if(@tabLex[@currentLex][1]==7)# если лексема do
+			
+				@currentLex+=1
+				if(Operator()==0)
+				
+					return 0
+				else
+					return -1
+				end
+			else
+				@tabErrors.push("Следующая лексема должна быть 'do'")
+				return -1
+			end
+		else
+			return -1
+		end
+	
+	elsif(@tabLex[@currentLex][1]==8)# если лексема for
+	
+		@currentLex+=1# переход
+		@tabrules.push("<оператор>->for ид.:= <выражение> to <выражение> do <оператор>");
+		if(@tabLex[@currentLex][1]==30)# если текущая лексема переменная
+		
+			@currentLex+=1# переход
+			if(@tabLex[@currentLex][1]==27) # если лексема :=
+			
+				@currentLex+=1# переход
+				if(Expression()==0)
+				
+					if(@typeExp!=15)# если в цикле используются выражения типа string,то вывод об ошибке
+					
+						@tabErrors.push("Семантическая ошибка: Выражение в цикле должно быть целого типа");
+					end
+					if(@tabLex[@currentLex][1]==9)# если to
+					
+						
+						@currentLex+=1# переход
+						if(Expression()==0)
+						
+							if(@typeExp!=15)# если в цикле используются выражения типа string,то вывод об ошибке
+								@tabErrors.push("Семантическая ошибка: Выражение в цикле должно быть целого типа");
+							if(@tabLex[@currentLex][1]==7)# если лексема do
+							
+								@currentLex+=1# переход
+								if(Operator()==0)
+								
+									return 0
+								else
+									return -1
+								end
+							else
+								@tabErrors.push("Следующая лексема должна быть 'do'")
+								return -1
+							end
+						else 
+							return -1
+						end
+					else
+						@tabErrors.push("Следующая лексема должна быть 'to'")
+						return -1
+					end
+				else
+					return -1
+				end
+			else
+				@tabErrors.push("Следующая лексема должна быть ':='")
+				return -1
+			end
+		else
+			@tabErrors.push("Следующая лексема должна быть 'ид.'")
+			return -1
+		end
+	
+	elsif(@tabLex[@currentLex][1]==11)# если лексема write
+	
+		@currentLex+=1# переход
+		@tabrules.push("<оператор>-> write( <выражение> )")
+		if(@tabLex[@currentLex][1]==25)# если лексема (
+		
+			@currentLex+=1# переход
+			if(Expression()==0)
+			
+				if(@tabLex[@currentLex][1]==26)# если лексема )
+				
+					@currentLex+=1# переход
+					return 0
+				else
+					@tabErrors.push("Следующая лексема должна быть ')'")
+					return -1
+				end
+			else 
+				return -1
+			end
+		else
+			@tabErrors.push("Следующая лексема должна быть '('")
+			return -1
+		end
+	
+	elsif(@tabLex[@currentLex][1]==10)# если лексема read
+	
+		@currentLex+=1
+		@tabrules.push("<оператор>->read( ид. )")
+		if(@tabLex[@currentLex][1]==25)# если лексема (
+		
+			@currentLex+=1
+			if(@tabLex[@currentLex][1]==30)# если текущая лексема переменная
+			
+				@currentLex+=1
+				if(@tabLex[@currentLex][1]==26)# если лексема )
+				
+					@currentLex+=1
+					return 0
+				else
+					@tabErrors.push("Следующая лексема должна быть ')'")
+					return -1
+				end
+			else
+				@tabErrors.push("Следующая лексема должна быть 'ид.'")
+				return -1
+			end
+		else
+			@tabErrors.push("Следующая лексема должна быть '('")
+			return -1
+		end
+	
+	elsif(@tabLex[@currentLex][1]==1)# если лексема begin
+	
+		@currentLex+=1
+		@tabrules.push("<оператор>->begin <последовательность операторов> end")
+		if(OperatorSequence()==0)
+        
+			if(@tabLex[@currentLex][1]==2)# если лексема end
+			
+				@currentLex+=1
+				return 0
+			else
+				@tabErrors.push("Следующая лексема должна быть 'end'")
+				return -1
+			end
+		end
+	else
+		@tabErrors.push("Следующая лексема должна быть 'ид.' или 'if' или 'while' или 'for' или 'write' или 'begin' или 'read'")
+		return -1
+	end
+end
+
+#  проверка нетерминала <иначе, оператор>
+
+def elseOp()
+
+	if(@tabLex[@currentLex][1]==5)# если лексема else
+	
+		@currentLex+=1
+		@tabrules.push("<иначе, оператор>->else <оператор>")
+		if(Operator()==0)
+		
+			return 0
+		end
+	else
+		@tabrules.push("<иначе оператор>->конец")
+		return 0
+	end
+end
+
+#  проверка нетерминала <условие>
+
+def Condition()
+
+	if(Comparison()==0)
+	
+		@tabrules.push("<условие>-><сравнение><логический оператор, сравнение>")
+		if(logOpCon()==0)
+		
+			return 0
+		else 
+			return -1
+		end
+	else 
+		return -1
+	end
+end
+
+#  проверка нетерминала <логический оператор, сравнение>
+
+def logOpCon()
+
+	if(LogicOperator()==0)
+	
+		@tabrules.push("<логический оператор, сравнение>-><логический оператор><сравнение>")
+		if(Condition()==0)
+			return 0
+		else
+			return -1
+		end
+	else 
+		@tabrules.push("<логический оператор, сравнение>->пусто")
+		return 0
+	end
+end
+
+#  проверка нетерминала <сравнение>
+
+def Comparison()
+
+	if(Expression()==0)
+	
+		@tabrules.push("<сравнение>-><выражение> отношение <выражение>")
+		type1=@typeExp# считываем тип текущего выражения
+		type2=0
+		@typeExp=0
+		# если присутствует один из знаков сравнения
+		if(@tabLex[@currentLex][1]==21 || @tabLex[@currentLex][1]==21.1 ||
+		 @tabLex[@currentLex][1]==21.2 || @tabLex[@currentLex][1]==21.3 ||
+		 @tabLex[@currentLex][1]==21.4 || @tabLex[@currentLex][1]==21.5)
+		
+			@currentLex+=1
+			if(Expression()==0)
+			
+				type2=@typeExp;# считываем тип текущего выражения
+				@typeExp=0
+				if(type1!=type2)# если сравнение производится с между разными типами,то вывод ошибки
+					@tabErrors.push("Семантическая ошибка: Сравнение не может быть сделано с различными типами")
+				end
+				return 0
+			else 
+				return -1
+			end
+		else
+			@tabErrors.push("Следующая лексема должна быть '=' или '<>' или '<' или '>' или '<=' или '>='")
+			return -1
+		end
+	else 
+		return -1
+	end
+end
+#  проверка нетерминала <логический оператор>
+
+def LogicOperator()
+
+	if(@tabLex[@currentLex][1]==13)# если лексема and
+	
+		@currentLex+=1
+		@tabrules.push("<логический оператор>->и")
+		return 0
+
+	elsif(@tabLex[@currentLex][1]==14)# если лексема or
+	
+		@currentLex+=1
+		@tabrules.push("<логический оператор>->или")
+		return 0
+	else
+		return -1
+	end
+end
+
+#  функция определения типа переменной
+#  return идентификатор типа: 15,если integer; 16, если string
+
+def CheckItem()
+
+	if(@tabLex[@currentLex][1]==40)# если числовая константа,возврат 15
+		return 15
+	elsif(@tabLex[@currentLex][1]==41)# если строковая константа,возврат 16
+		return 16
+	elsif(@tabLex[@currentLex][1]==30)# если это переменная
+	
+		if(@TypeI.include?(@tabLex[@currentLex][0]))# если идентификатор текущей переменной имеется в TypeI,т.е. она была объявлена как integer
+			return 15
+		elsif(@TypeS.include?(@tabLex[@currentLex][0]))# если идентификатор текущей переменной имеется в TypeS,т.е. она была объявлена как string
+			return 16
+		else
+			@tabErrors.push("Семантическая ошибка: Эта переменная не была объявлена") # если переменная не найдена в контейнерах,то она не была объявлена
+		end
+	end
+end
+
+#  проверка нетерминала <выражение>
+
+def Expression()
+
+	@item=CheckItem()# определяем тип текущей лексемы
+	if(@item==15)# если integer,то идем по спуску числового выражения
+	
+		if(NumExpression()==0)
+		
+			@typeExp=15# тип выражения записываем как integer
+			@tabrules.push("<выражение>-><числ. выражение>")
+			return 0
+		end
+	else if(@item==16)# если string,то идем по спуску строкового выражения
+	
+		if(StrExpression()==0)
+		
+			@typeExp=16# тип выражения записываем как string
+			@tabrules.push("<выражение>-><стр. выражение>")
+			return 0
+		end
+	else # иначе ошибка
+		@tabErrors.push("Следующая лексема должна быть 'стр. конст.' или 'цел. конст.'")
+		return -1
+	end
+end
+
+#  проверка нетерминала <числ. выражение>
+
+def NumExpression()
+
+	if(Term()==0)
+	
+		@tabrules.push("<числ. выражение>-><терминал><+-числ. выражение>")
+		if(NumRest()==0)
+			return 0
+		else
+			return -1
+		end
+	else 
+		return -1
+	end
+end
+
+#  проверка нетерминала <+-числ. выражение>
+
+def NumRest()
+
+	if(@tabLex[@currentLex][1]==22)# если лексема +
+	
+		@currentLex+=1
+		@tabrules.push("<+-числ. выражение>->+<числ. выражение>")
+		if(NumExpression()==0)
+			return 0
+		else
+			return -1
+		end
+		
+	elsif(@tabLex[@currentLex][1]==22.1)# если лексема -
+	
+		@currentLex+=1
+		@tabrules.push("<+-числ. выражение>->-<числ. выражение>")
+		if(NumExpression()==0)
+			return 0
+		else
+			return -1
+		end
+	else
+		@tabrules.push("<+-числ. выражение>->пусто")
+		return 0
+	end
+end
+
+#  проверка нетерминала <терминал>
+
+def Term()
+
+	if(Multiplier()==0)
+	
+		@tabrules.push("<терминал>-><множитель><другой терминал>")
+		if(termRest()==0)
+			return 0
+		else
+			return -1
+		end
+	else 
+		return -1
+	end
+end
+
+#  проверка нетерминала <другой терминал>
+
+def termRest()
+
+	if(@tabLex[@currentLex][1]==23)# если лексема *
+	
+		@currentLex+=1
+		@tabrules.push("<другой терминал>->*<числ. выражение>")
+		if(NumExpression()==0)
+			return 0
+		else
+			return -1
+		end
+	
+	elsif(@tabLex[@currentLex][1]==23.1)# если лексема /
+	
+		@currentLex+=1
+		@tabrules.push("<другой терминал>->/<числ. выражение>")
+		if(NumExpression()==0)
+			return 0
+		else
+			return -1
+		end
+	else
+		@tabrules.push("<другой терминал>->пусто")
+		return 0
+	end
+end
+
+#  проверка нетерминала <множитель>
+
+def Multiplier()
+
+	if(@tabLex[@currentLex][1]==30 && CheckItem()==15)# если текущая лексема переменная типа integer
+	
+		@typeExp=15# устанавливаем тип выражения
+		@currentLex+=1
+		@tabrules.push("<множитель>->ид.")
+		return 0
+	
+	elsif(@tabLex[@currentLex][1]==40)# если лексема числовая константа
+	
+		@typeExp=15# устанавливаем тип выражения
+		@currentLex+=1
+		@tabrules.push("<множитель>->цел. конст.")
+		return 0
+	
+	elsif(@tabLex[@currentLex][1]==25)# если лексема (
+	
+		@currentLex+=1
+		@tabrules.push("<множительr>->( <числ. выражение> )");
+		if(NumExpression()==0)
+		
+			if(@tabLex[@currentLex][1]==26)# если лексема )
+			
+				@currentLex+=1
+				return 0
+			else
+				@tabErrors.push("Следующая лексема должна быть ')'")
+				return -1
+			end
+		else 
+			return -1
+		end	
+	else # если не integer, то вывод ошибки
+		@tabErrors.push("Семантическая ошибка: Следующая лексема должна быть целого типа")
+		return -1
+	end
+end
+
+#  проверка нетерминала <стр. выражение>
+
+def StrExpression()
+
+	if(StrTerm()==0)
+	
+		@tabrules.push("<стр. выражение>-><стр. терминал><другое стр. выражение>")
+		if(strRest()==0)
+			return 0
+		else
+			return -1
+		end	
+	else 
+		return -1
+	end
+end
+
+#  проверка нетерминала <другое стр. выражение>
+
+def strRest()
+
+	if(@tabLex[@currentLex][1]==22)# если лексема +
+	
+		@currentLex+=1
+		@tabrules.push("<другое стр. выражение>->+<стр. выражение>");
+		if(StrExpression()==0)
+			return 0
+		else
+			return -1
+		end
+	else
+		@tabrules.push("<другое стр. выражение>->пусто")
+		return 0
+	end
+end
+
+#  проверка нетерминала <стр. терминал>
+
+def StrTerm()
+
+	if(CheckItem()==16)# если string
+	
+		@typeExp=16;# установка типа выражения
+		if(@tabLex[@currentLex][1]==30 )# если текущая лексема переменная
+		
+			@currentLex+=1
+			@tabrules.push("<стр. терминал>->ид.")
+			return 0
+		
+		elsif(@tabLex[@currentLex][1]==41)# если строковая константа
+		
+			@currentLex+=1
+			@tabrules.push("<стр. терминал>->стр. конст.")
+			return 0
+                else
+                     1+1   
+		end
+	else # иначе вывод об ошибке о неправильном типе
+		@tabErrors.push(" Семантическая ошибка: Следующий лексема должна быть строкового типа")
+		@typeExp=15
+		return -1
+	end
+end

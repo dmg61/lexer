@@ -1,0 +1,9 @@
+﻿﻿<% provide(:title, 'Лексический анализ') %>
+<!-- Форма с исходным кодом -->
+<center><%= form_tag({controller: "welcome", action: "index"}, method: "post") do %>
+    <h1><%= label_tag(:src, "Введите исходный код здесь:") %></h1>
+    <br />
+    <%= text_area_tag :src, nil, :size => "100x15"  %>
+    <br />
+    <input class="btn btn-primary" type="submit" value="Анализировать">
+<% end %></center>
